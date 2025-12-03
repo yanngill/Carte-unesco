@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Patrimoine UNESCO - Amérique du Sud</title>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .legend {
+      padding: 8px 10px;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.4;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+    .legend span {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    // Liste des sites UNESCO (bien matériel) + éléments immatériels
+    const sites = [
+      // ===== PÉROU =====
+      {
+        name: "Sanctuaire historique de Machu Picchu",
+        country: "Pérou",
+        lat: -13.163068,
+        lng: -72.545128,
+        category: "mixte",
+        unescoType: "Bien mixte (culture + nature)",
+        year: 1983,
+        description:
+          "Site inca emblématique dans les Andes, combinant architecture de pierre et paysage montagneux exceptionnel."
+      },
+      {
+        name: "Ville de Cuzco",
+        country: "Pérou",
+        lat: -13.52,
+        lng: -71.97,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1983,
+        description:
+          "Ancienne capitale de l’empire inca, ville coloniale bâtie sur les fondations de la cité préhispanique."
+      },
+      {
+        name: "Lignes et géoglyphes de Nazca et de Pampas de Jumana",
+        country: "Pérou",
+        lat: -14.716667,
+        lng: -75.133333,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1994,
+        description:
+          "Immenses géoglyphes tracés dans le désert, représentant animaux, figures géométriques et lignes rituelles."
+      },
+
+      // ===== ÉQUATEUR =====
+      {
+        name: "Îles Galápagos",
+        country: "Équateur",
+        lat: -0.6667,
+        lng: -90.55,
+        category: "naturel",
+        unescoType: "Bien naturel",
+        year: 1978,
+        description:
+          "Archipel volcanique au Pacifique, laboratoire naturel de l’évolution célèbre pour sa faune endémique."
+      },
+      {
+        name: "Centre historique de Quito",
+        country: "Équateur",
+        lat: -0.180653,
+        lng: -78.467838,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1978,
+        description:
+          "L’un des centres coloniaux les mieux préservés d’Amérique latine, avec de nombreuses églises et couvents baroques."
+      },
+
+      // ===== ARGENTINE / BRÉSIL (TRANSFRONTALIER) =====
+      {
+        name: "Parcs nationaux d’Iguazú / Iguaçu",
+        country: "Argentine / Brésil",
+        lat: -25.6953,
+        lng: -54.4367,
+        category: "naturel",
+        unescoType: "Bien naturel (site transfrontalier)",
+        year: 1984,
+        description:
+          "Complexe spectaculaire de chutes d’eau entouré de forêt subtropicale, riche en biodiversité."
+      },
+
+      // ===== ARGENTINE =====
+      {
+        name: "Parc national Los Glaciares",
+        country: "Argentine",
+        lat: -50.0,
+        lng: -73.249444,
+        category: "naturel",
+        unescoType: "Bien naturel",
+        year: 1981,
+        description:
+          "Paysages glaciaires patagoniques, avec notamment le célèbre glacier Perito Moreno et de vastes champs de glace."
+      },
+      {
+        name: "Cueva de las Manos, Río Pinturas",
+        country: "Argentine",
+        lat: -47.1558,
+        lng: -70.6572,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1999,
+        description:
+          "Grotte ornée de centaines de silhouettes de mains et de scènes de chasse, témoignage très ancien de l’art rupestre."
+      },
+
+      // ===== BRÉSIL =====
+      {
+        name: "Centre historique de Salvador de Bahia",
+        country: "Brésil",
+        lat: -12.97399,
+        lng: -38.51038,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1985,
+        description:
+          "Ancienne capitale coloniale, connue pour ses maisons colorées, ses églises baroques et son héritage afro-brésilien."
+      },
+      {
+        name: "Brasília, ensemble urbanistique de Lucio Costa et Oscar Niemeyer",
+        country: "Brésil",
+        lat: -15.793889,
+        lng: -47.882778,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1987,
+        description:
+          "Capitale moderne planifiée, exemple majeur d’urbanisme du XXᵉ siècle et d’architecture monumentale en béton."
+      },
+      {
+        name: "Rio de Janeiro, paysages cariocas entre la montagne et la mer",
+        country: "Brésil",
+        lat: -22.9519,
+        lng: -43.2105,
+        category: "mixte",
+        unescoType: "Bien mixte (paysage culturel)",
+        year: 2012,
+        description:
+          "Paysage culturel associant relief spectaculaire, baie, plages et lieux emblématiques comme le Corcovado."
+      },
+
+      // ===== CHILI =====
+      {
+        name: "Quartier historique de la ville portuaire de Valparaíso",
+        country: "Chili",
+        lat: -33.0406,
+        lng: -71.6279,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 2003,
+        description:
+          "Grand port du XIXᵉ siècle, avec funiculaires, collines colorées et architecture liée au commerce maritime."
+      },
+      {
+        name: "Églises de Chiloé",
+        country: "Chili",
+        lat: -42.5,
+        lng: -73.76667,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 2000,
+        description:
+          "Ensemble d’églises en bois, mélange d’architecture européenne et de traditions locales de l’archipel de Chiloé."
+      },
+
+      // ===== BOLIVIE =====
+      {
+        name: "Ville de Potosí",
+        country: "Bolivie",
+        lat: -19.58917,
+        lng: -65.75333,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1987,
+        description:
+          "Ancien centre minier d’argent du Cerro Rico, symbole de la richesse coloniale espagnole et de son exploitation."
+      },
+      {
+        name: "Tiwanaku : centre spirituel et politique de la culture Tiwanaku",
+        country: "Bolivie",
+        lat: -16.5536,
+        lng: -68.6696,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 2000,
+        description:
+          "Ruines monumentales d’une grande civilisation pré-inca, près du lac Titicaca (portes, monolithes, pyramides)."
+      },
+
+      // ===== COLOMBIE =====
+      {
+        name: "Paysage culturel du café de Colombie",
+        country: "Colombie",
+        lat: 5.47167,
+        lng: -75.68167,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 2011,
+        description:
+          "Région rurale de montagnes et plantations de café, exemple de culture traditionnelle encore vivante."
+      },
+      {
+        name: "Port, forteresses et ensemble monumental de Carthagène des Indes",
+        country: "Colombie",
+        lat: 10.3997,
+        lng: -75.5144,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1984,
+        description:
+          "Ville coloniale fortifiée caraïbe, dotée de remparts, bastions et édifices militaires remarquables."
+      },
+
+      // ===== VENEZUELA =====
+      {
+        name: "Parc national Canaima (Angel Falls, tepuis)",
+        country: "Venezuela",
+        lat: 5.338,
+        lng: -62.0379,
+        category: "naturel",
+        unescoType: "Bien naturel",
+        year: 1994,
+        description:
+          "Immense parc de savanes et de plateaux rocheux (tepuis), avec notamment le Salto Ángel, plus haute chute d’eau du monde."
+      },
+
+      // ===== PARAGUAY =====
+      {
+        name: "Missions jésuites de La Santísima Trinidad de Paraná et Jesús de Tavarangue",
+        country: "Paraguay",
+        lat: -27.090404,
+        lng: -55.730186,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1993,
+        description:
+          "Ruines de réductions jésuites où vivaient populations guaranies et missionnaires, exemple marquant d’urbanisme missionnaire."
+      },
+
+      // ===== URUGUAY =====
+      {
+        name: "Quartier historique de Colonia del Sacramento",
+        country: "Uruguay",
+        lat: -34.4607,
+        lng: -57.8339,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1995,
+        description:
+          "Ville coloniale fondée par les Portugais face à Buenos Aires, avec un tissu urbain ancien bien conservé."
+      },
+
+      // ===== PATRIMOINE IMMATÉRIEL =====
+      {
+        name: "Le Tango (patrimoine immatériel)",
+        country: "Argentine / Uruguay – Río de la Plata",
+        lat: -34.6037,
+        lng: -58.3816,
+        category: "immatériel",
+        unescoType: "Patrimoine culturel immatériel de l’humanité",
+        year: 2009,
+        description:
+          "Musique et danse nées dans les quartiers populaires de Buenos Aires et Montevideo, aujourd’hui symbole du Río de la Plata."
+      },
+      {
+        name: "Samba de Roda du Recôncavo de Bahia (immatériel)",
+        country: "Brésil",
+        lat: -12.94, // léger décalage pour ne pas être exactement sur le même point que Salvador
+        lng: -38.50,
+        category: "immatériel",
+        unescoType: "Patrimoine culturel immatériel de l’humanité",
+        year: 2005,
+        description:
+          "Pratique festive afro-brésilienne mêlant musique, chant et danse en cercle, née dans la région du Recôncavo de Bahia."
+      }
+    ];
+
+    // Couleur par catégorie de patrimoine
+    function getColor(category) {
+      switch (category) {
+        case "culturel":
+          return "#1f77b4"; // bleu
+        case "naturel":
+          return "#2ca02c"; // vert
+        case "mixte":
+          return "#9467bd"; // violet
+        case "immatériel":
+          return "#ff7f0e"; // orange
+        default:
+          return "#333333";
+      }
+    }
+
+    // Initialisation de la carte centrée sur l’Amérique du Sud
+    const map = L.map("map").setView([-15, -60], 3.2);
+
+    // Fond de carte OpenStreetMap
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> – Données approximatives'
+    }).addTo(map);
+
+    // Ajout des marqueurs
+    sites.forEach(site => {
+      const color = getColor(site.category);
+
+      const marker = L.circleMarker([site.lat, site.lng], {
+        radius: 7,
+        color: color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.7
+      });
+
+      const popupHtml = `
+        <strong>${site.name}</strong><br/>
+        <strong>Pays :</strong> ${site.country}<br/>
+        <strong>Type :</strong> ${site.unescoType}<br/>
+        <strong>Inscription UNESCO :</strong> ${site.year}<br/>
+        <br/>
+        ${site.description}
+      `;
+
+      marker.bindPopup(popupHtml);
+      marker.addTo(map);
+    });
+
+    // Légende
+    const legend = L.control({ position: "bottomright" });
+
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      const categories = [
+        { key: "culturel", label: "Bien culturel" },
+        { key: "naturel", label: "Bien naturel" },
+        { key: "mixte", label: "Bien mixte" },
+        { key: "immatériel", label: "Patrimoine immatériel" }
+      ];
+
+      div.innerHTML += "<strong>Type de patrimoine</strong><br/>";
+      categories.forEach(cat => {
+        div.innerHTML +=
+          '<span style="background:' +
+          getColor(cat.key) +
+          '"></span>' +
+          cat.label +
+          "<br/>";
+      });
+
+      return div;
+    };
+
+    legend.addTo(map);
+  </script>
+</body>
+</html>
