@@ -12,6 +12,7 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
+
   <style>
     html, body { height: 100%; margin: 0; }
     #map { width: 100%; height: 100%; }
@@ -19,20 +20,74 @@
     .legend {
       padding: 8px 10px;
       background: white;
-      border-radius: 4px;
+      border-radius: 10px;
       font-size: 12px;
       line-height: 1.4;
-      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      border: 1px solid rgba(0,0,0,0.08);
     }
     .legend span {
       display: inline-block;
       width: 12px;
       height: 12px;
-      margin-right: 5px;
+      margin-right: 6px;
       border-radius: 50%;
+      vertical-align: middle;
+    }
+
+    /* === JOLI BOUTON SWITCH === */
+    .basemap-toggle {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+      backdrop-filter: blur(6px);
+    }
+    .basemap-toggle button {
+      all: unset;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: #111;
+      background: white;
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      transition: transform .05s ease, box-shadow .2s ease;
+      user-select: none;
+    }
+    .basemap-toggle button:hover {
+      box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+    }
+    .basemap-toggle button:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+    }
+    .basemap-toggle .pill {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #2ca02c; /* vert = carte */
+    }
+    .basemap-toggle .sub {
+      display: block;
+      font-weight: 500;
+      opacity: 0.75;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .basemap-toggle .label-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
     }
   </style>
 </head>
+
 <body>
   <div id="map"></div>
 
@@ -335,51 +390,88 @@
       }
     }
 
-    // Initialisation de la carte centrée sur l’Amérique du Sud
-    const map = L.map("map").setView([-15, -60], 3.2);
+    // Initialisation carte
+    const map = L.map("map", { zoomControl: true }).setView([-15, -60], 3.2);
 
-    // === COUCHES DE FOND ===
-    // 1) Satellite (Esri World Imagery)
-    const satellite = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        attribution:
-          "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
-      }
-    );
-
-    // 2) Labels (noms villes, frontières, routes) par-dessus
-    const labels = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-      {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap &copy; CARTO",
-        pane: "overlayPane" // assure que c'est au-dessus
-      }
-    );
-
-    // 3) (Optionnel) OSM classique si tu veux aussi pouvoir basculer
+    // === FONDS DE CARTE ===
+    // Carte classique
     const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     });
 
-    // Par défaut : satellite + labels
-    satellite.addTo(map);
-    labels.addTo(map);
+    // Satellite (vrai)
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+      }
+    );
 
-    // Contrôle de couches (toggle)
-    L.control.layers(
+    // Labels au-dessus du satellite (villes/axes/frontières)
+    const labels = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
       {
-        "Satellite": satellite,
-        "OpenStreetMap": osm
-      },
-      {
-        "Noms (villes / routes)": labels
-      },
-      { collapsed: false }
-    ).addTo(map);
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap &copy; CARTO"
+      }
+    );
+
+    // Fond par défaut = carte classique
+    osm.addTo(map);
+
+    // État du mode (carte vs satellite)
+    let isSatellite = false;
+
+    // === BOUTON SWITCH PROPRE ===
+    const ToggleControl = L.Control.extend({
+      options: { position: "topright" },
+      onAdd: function() {
+        const container = L.DomUtil.create("div", "basemap-toggle");
+        const btn = L.DomUtil.create("button", "", container);
+
+        btn.innerHTML = `
+          <span class="pill" id="modePill"></span>
+          <span class="label-wrap">
+            <span id="modeTitle">🗺️ Carte</span>
+            <span class="sub" id="modeSub">Cliquer pour Satellite</span>
+          </span>
+        `;
+
+        // Empêche la carte de bouger quand tu cliques
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        btn.addEventListener("click", () => {
+          isSatellite = !isSatellite;
+
+          if (isSatellite) {
+            // Passe en satellite + labels
+            map.removeLayer(osm);
+            satellite.addTo(map);
+            labels.addTo(map);
+
+            document.getElementById("modeTitle").textContent = "🛰️ Satellite";
+            document.getElementById("modeSub").textContent = "Cliquer pour Carte";
+            document.getElementById("modePill").style.background = "#9467bd"; // violet
+          } else {
+            // Retour carte
+            map.removeLayer(satellite);
+            map.removeLayer(labels);
+            osm.addTo(map);
+
+            document.getElementById("modeTitle").textContent = "🗺️ Carte";
+            document.getElementById("modeSub").textContent = "Cliquer pour Satellite";
+            document.getElementById("modePill").style.background = "#2ca02c"; // vert
+          }
+        });
+
+        return container;
+      }
+    });
+
+    map.addControl(new ToggleControl());
 
     // === MARQUEURS ===
     sites.forEach(site => {
