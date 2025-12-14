@@ -2,7 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Patrimoine UNESCO - Amérique du Sud</title>
+
   <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
@@ -11,14 +13,9 @@
     crossorigin=""
   />
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    #map {
-      width: 100%;
-      height: 100%;
-    }
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100%; height: 100%; }
+
     .legend {
       padding: 8px 10px;
       background: white;
@@ -45,6 +42,7 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
+
   <script>
     // Liste des sites UNESCO (bien matériel) + éléments immatériels
     const sites = [
@@ -192,16 +190,16 @@
           "Grand port du XIXᵉ siècle, avec funiculaires, collines colorées et architecture liée au commerce maritime."
       },
       {
-  name: "Parc national de Rapa Nui (Île de Pâques)",
-  country: "Chili",
-  lat: -27.121192,
-  lng: -109.366424,
-  category: "culturel",
-  unescoType: "Bien culturel",
-  year: 1995,
-  description:
-    "Île polynésienne isolée du Pacifique, célèbre pour ses moaï monumentaux et ses sites cérémoniels, témoignage d’une civilisation unique."
-},
+        name: "Parc national de Rapa Nui (Île de Pâques)",
+        country: "Chili",
+        lat: -27.121192,
+        lng: -109.366424,
+        category: "culturel",
+        unescoType: "Bien culturel",
+        year: 1995,
+        description:
+          "Île polynésienne isolée du Pacifique, célèbre pour ses moaï monumentaux et ses sites cérémoniels, témoignage d’une civilisation unique."
+      },
       {
         name: "Églises de Chiloé",
         country: "Chili",
@@ -316,7 +314,7 @@
       {
         name: "Samba de Roda du Recôncavo de Bahia (immatériel)",
         country: "Brésil",
-        lat: -12.94, // léger décalage pour ne pas être exactement sur le même point que Salvador
+        lat: -12.94,
         lng: -38.50,
         category: "immatériel",
         unescoType: "Patrimoine culturel immatériel de l’humanité",
@@ -329,30 +327,61 @@
     // Couleur par catégorie de patrimoine
     function getColor(category) {
       switch (category) {
-        case "culturel":
-          return "#1f77b4"; // bleu
-        case "naturel":
-          return "#2ca02c"; // vert
-        case "mixte":
-          return "#9467bd"; // violet
-        case "immatériel":
-          return "#ff7f0e"; // orange
-        default:
-          return "#333333";
+        case "culturel": return "#1f77b4";
+        case "naturel": return "#2ca02c";
+        case "mixte": return "#9467bd";
+        case "immatériel": return "#ff7f0e";
+        default: return "#333333";
       }
     }
 
     // Initialisation de la carte centrée sur l’Amérique du Sud
     const map = L.map("map").setView([-15, -60], 3.2);
 
-    // Fond de carte OpenStreetMap
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> – Données approximatives'
-    }).addTo(map);
+    // === COUCHES DE FOND ===
+    // 1) Satellite (Esri World Imagery)
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution:
+          "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+      }
+    );
 
-    // Ajout des marqueurs
+    // 2) Labels (noms villes, frontières, routes) par-dessus
+    const labels = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap &copy; CARTO",
+        pane: "overlayPane" // assure que c'est au-dessus
+      }
+    );
+
+    // 3) (Optionnel) OSM classique si tu veux aussi pouvoir basculer
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    });
+
+    // Par défaut : satellite + labels
+    satellite.addTo(map);
+    labels.addTo(map);
+
+    // Contrôle de couches (toggle)
+    L.control.layers(
+      {
+        "Satellite": satellite,
+        "OpenStreetMap": osm
+      },
+      {
+        "Noms (villes / routes)": labels
+      },
+      { collapsed: false }
+    ).addTo(map);
+
+    // === MARQUEURS ===
     sites.forEach(site => {
       const color = getColor(site.category);
 
@@ -373,8 +402,7 @@
         ${site.description}
       `;
 
-      marker.bindPopup(popupHtml);
-      marker.addTo(map);
+      marker.bindPopup(popupHtml).addTo(map);
     });
 
     // Légende
@@ -392,11 +420,8 @@
       div.innerHTML += "<strong>Type de patrimoine</strong><br/>";
       categories.forEach(cat => {
         div.innerHTML +=
-          '<span style="background:' +
-          getColor(cat.key) +
-          '"></span>' +
-          cat.label +
-          "<br/>";
+          '<span style="background:' + getColor(cat.key) + '"></span>' +
+          cat.label + "<br/>";
       });
 
       return div;
